@@ -388,8 +388,9 @@ canvas#star-canvas {
 
 /* ══ CTA BUTTON ══ */
 .cta-btn {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 18px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px;
+  padding: 0 20px; height: 64px;
   border-radius: 20px; text-decoration: none; color: var(--cream);
   font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: .5px;
   position: relative; overflow: hidden;
@@ -419,25 +420,15 @@ canvas#star-canvas {
 }
 
 .cta-left {
-  display: flex; align-items: center; gap: 12px; position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 1;
+  flex: 0 0 auto;
 }
 .cta-icon {
   width: 40px; height: 40px; border-radius: 12px;
   object-fit: cover; border: 1px solid rgba(255,179,138,0.2);
 }
-.cta-arrow {
-  position: relative; z-index: 1;
-  width: 30px; height: 30px; border-radius: 50%;
-  border: 1px solid rgba(255,179,138,0.3);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--peach); font-size: 11px;
-  transition: transform .3s, background .3s, border-color .3s;
-}
-.cta-btn:hover .cta-arrow {
-  transform: rotate(-45deg);
-  background: rgba(255,179,138,0.15);
-  border-color: var(--peach);
-}
+.cta-arrow { display: none; }
 
 /* ══ LINK CARDS ══ */
 .link-list { display: flex; flex-direction: column; gap: 8px; }
@@ -760,7 +751,7 @@ function startWeb(){
     (function eqLoop(){
       requestAnimationFrame(eqLoop);
       analyser.getByteFrequencyData(freqData);
-      eqCtx.clearRect(0, 0, 140, 140);
+      eqCtx.clearRect(0, 0, 160, 160);
 
       for(let i = 0; i < BARS; i++){
         // map bar index → freq bin (focus on lower half = bass/mids)
