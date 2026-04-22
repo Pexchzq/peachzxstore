@@ -254,20 +254,38 @@ canvas#star-canvas {
 }
 
 /* ── avatar ── */
-.avatar-wrap { position: relative; margin-bottom: 18px; }
+.avatar-wrap {
+  position: relative;
+  margin-bottom: 18px;
+  width: 160px; height: 160px;
+  flex-shrink: 0;
+}
+
+#eq-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 160px; height: 160px;
+  z-index: 5;
+  pointer-events: none;
+}
 
 .avatar {
   width: 96px; height: 96px; border-radius: 50%;
-  object-fit: cover; position: relative; z-index: 2;
-  transition: box-shadow .05s;
+  object-fit: cover;
+  position: absolute;
+  top: 50%; left: 50%;
+  margin-top: -48px; margin-left: -48px;
+  z-index: 3;
 }
 
-/* triple ring */
+/* triple ring — use margin centering so spinRing keyframe doesn't kill translate */
 .avatar-ring {
   position: absolute; border-radius: 50%; z-index: 1;
+  top: 50%; left: 50%;
 }
 .avatar-ring-1 {
-  inset: -3px;
+  width: 104px; height: 104px;
+  margin-top: -52px; margin-left: -52px;
   background: conic-gradient(var(--peach), var(--pink), #a78bfa, var(--peach));
   animation: spinRing 3s linear infinite;
 }
@@ -275,18 +293,21 @@ canvas#star-canvas {
   content:''; position:absolute; inset:3px; border-radius:50%; background:#14090d;
 }
 .avatar-ring-2 {
-  inset: -9px;
+  width: 116px; height: 116px;
+  margin-top: -58px; margin-left: -58px;
   border: 1px solid rgba(255,179,138,0.2);
   animation: spinRing 6s linear infinite reverse;
 }
 .avatar-ring-3 {
-  inset: -16px;
-  border: 1px dashed rgba(255,107,157,0.12);
+  width: 130px; height: 130px;
+  margin-top: -65px; margin-left: -65px;
+  border: 1px dashed rgba(255,107,157,0.1);
   animation: spinRing 12s linear infinite;
 }
 
 .view-badge {
-  position: absolute; bottom: 2px; right: -6px; z-index: 3;
+  position: absolute;
+  bottom: 6px; right: 2px; z-index: 4;
   background: rgba(10,6,8,0.9); border: 1px solid var(--cb);
   border-radius: 20px; padding: 3px 8px;
   font-size: 10px; color: var(--dim);
@@ -552,6 +573,7 @@ canvas#star-canvas {
   <!-- Profile -->
   <div class="card profile-card">
     <div class="avatar-wrap">
+      <canvas id="eq-canvas"></canvas>
       <div class="avatar-ring avatar-ring-3"></div>
       <div class="avatar-ring avatar-ring-2"></div>
       <div class="avatar-ring avatar-ring-1"></div>
@@ -722,15 +744,53 @@ function startWeb(){
   if(audioCtx.state==='suspended') audioCtx.resume();
 
   music.play().then(()=>{
-    const data=new Uint8Array(analyser.frequencyBinCount);
-    (function viz(){
-      requestAnimationFrame(viz);
-      analyser.getByteFrequencyData(data);
-      let b=0; for(let i=0;i<6;i++) b+=data[i];
-      const avg=b/6, g=avg/3, op=avg/255;
-      avatar.style.boxShadow = avg>10
-        ? `0 0 ${g/2}px rgba(255,255,255,${op+.25}),0 0 ${g}px rgba(255,107,157,${op}),0 0 ${g*1.3}px rgba(255,179,138,${op*.7})`
-        : '0 0 15px rgba(255,179,138,0.15)';
+    /* ══ CIRCULAR EQ ══ */
+    const eqCanvas = document.getElementById('eq-canvas');
+    const eqCtx    = eqCanvas.getContext('2d');
+    eqCanvas.width  = 160;
+    eqCanvas.height = 160;
+
+    const BARS   = 64;
+    const CX     = 80, CY = 80;
+    const INNER  = 60;   // sits just outside ring-2 (116px/2 = 58 + gap)
+    const MAX_H  = 16;   // max bar height in px
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    let smoothed   = new Float32Array(BARS).fill(0);
+
+    (function eqLoop(){
+      requestAnimationFrame(eqLoop);
+      analyser.getByteFrequencyData(freqData);
+      eqCtx.clearRect(0, 0, 140, 140);
+
+      for(let i = 0; i < BARS; i++){
+        // map bar index → freq bin (focus on lower half = bass/mids)
+        const bin    = Math.floor(i / BARS * (analyser.frequencyBinCount * 0.6));
+        const target = freqData[bin] / 255;
+        // smooth with lerp
+        smoothed[i] += (target - smoothed[i]) * 0.22;
+
+        const angle  = (i / BARS) * Math.PI * 2 - Math.PI / 2;
+        const h      = smoothed[i] * MAX_H;
+        const x1     = CX + Math.cos(angle) * INNER;
+        const y1     = CY + Math.sin(angle) * INNER;
+        const x2     = CX + Math.cos(angle) * (INNER + h);
+        const y2     = CY + Math.sin(angle) * (INNER + h);
+
+        // color: peach → pink gradient around the ring
+        const t      = i / BARS;
+        const rC     = 255;
+        const gC     = Math.round(179 - t * 72);   // 179→107
+        const bC     = Math.round(138 + t * 19);   // 138→157
+        const alpha  = 0.25 + smoothed[i] * 0.75;
+
+        eqCtx.beginPath();
+        eqCtx.moveTo(x1, y1);
+        eqCtx.lineTo(x2, y2);
+        eqCtx.strokeStyle = `rgba(${rC},${gC},${bC},${alpha})`;
+        eqCtx.lineWidth   = 2.2;
+        eqCtx.lineCap     = 'round';
+        eqCtx.stroke();
+      }
     })();
   }).catch(()=>{});
 
